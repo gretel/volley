@@ -17,17 +17,17 @@ Ping responder for MeshCore networks!
 
 **Channel messages:**
 ```
-@[sender] [emoji] HH:MM:SSZ, diff:Xms, snr:XdB, hops:N, trace:a1.b2.c3, Xkm
+@[sender] [emoji] HH:MM:SSZ, diff:Xms, snr:XdB, rssi:XdBm, hops:N, trace:a1.b2.c3, Xkm
 ```
 
 **Direct messages:**
 ```
-[emoji] HH:MM:SSZ, diff:Xms, snr:XdB, direct, Xkm
+[emoji] HH:MM:SSZ, diff:Xms, snr:XdB, rssi:XdBm, direct, Xkm
 ```
 
 A random sports ball emoji is selected for each response: 🏉🏀🎾🏈⚽️🎱🥎⚾️🏐
 
-Fields are omitted if unavailable (e.g., `diff` requires message timestamp).
+Fields are omitted if unavailable (e.g., `diff` requires message timestamp, `rssi` from RX_LOG_DATA).
 
 ## Trigger Words
 
