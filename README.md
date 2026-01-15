@@ -33,6 +33,10 @@ Fields are omitted if unavailable.
 
 Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitive)
 
+## Telemetry Requests
+
+Send a direct message containing `stats` or `telemetry` to request bot statistics. Only authorized public keys can retrieve telemetry data.
+
 ## Installation
 
 ```bash
@@ -64,6 +68,17 @@ uv run main.py -s /dev/ttyUSB0 -c 1
 
 # Enable verbose logging
 uv run main.py -s /dev/ttyUSB0 -v
+
+# Authorize specific public keys for telemetry requests
+uv run main.py -s /dev/ttyUSB0 --telemetry-auth 6be9724012b0
+
+# Multiple authorized keys
+uv run main.py -s /dev/ttyUSB0 --telemetry-auth 6be9724012b0 --telemetry-auth abc123def456
+```
+
+**Telemetry Response Format:**
+```
+📊 Telemetry: X pings, Y pongs, max dist: Z.Zkm (contact_name)
 ```
 
 ## Requirements

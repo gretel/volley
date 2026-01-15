@@ -38,6 +38,9 @@ telemetry = {
     "max_distance_contact": None,
 }
 
+# Authorized public key prefixes for telemetry requests (set via command line)
+authorized_telemetry_keys: set[str] = set()
+
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
     """Parse RX_LOG event payload to extract LoRa packet details.
@@ -231,8 +234,37 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 sender = msg.get("pubkey_prefix", "unknown")
                 logger.debug(f"Direct message from {sender}: {text}")
 
-            # Check if this is a ping message (ping, test, pink, echo)
+            # Check if this is a telemetry request (from authorized users only)
             text_lower = text.lower()
+            if "stats" in text_lower or "telemetry" in text_lower:
+                # Only respond to telemetry requests from authorized keys
+                if not is_channel:  # Only direct messages
+                    pubkey_prefix = msg.get("pubkey_prefix", "")
+                    if pubkey_prefix in authorized_telemetry_keys:
+                        logger.info(f"Telemetry request from authorized user {pubkey_prefix}")
+
+                        # Build telemetry response
+                        telem_reply = (
+                            f"📊 Telemetry: {telemetry['pings_received']} pings, "
+                            f"{telemetry['pongs_sent']} pongs, "
+                            f"max dist: {telemetry['max_distance_km']:.1f}km "
+                            f"({telemetry['max_distance_contact'] or 'N/A'})"
+                        )
+
+                        # Send telemetry response
+                        contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
+                        if contact:
+                            result = await meshcore.commands.send_msg(contact, telem_reply)
+                            if result.type == EventType.ERROR:
+                                logger.error(f"Failed to send telemetry: {result.payload}")
+                            else:
+                                logger.info("Telemetry sent successfully")
+                        return
+                    else:
+                        logger.debug(f"Telemetry request from unauthorized user {pubkey_prefix}, ignoring")
+                        return
+
+            # Check if this is a ping message (ping, test, pink, echo)
             if not any(trigger in text_lower for trigger in ["ping", "test", "pink", "echo"]):
                 logger.debug("Not a trigger message, ignoring")
                 return
@@ -430,11 +462,24 @@ Examples:
         help="Enable verbose debug logging"
     )
 
+    parser.add_argument(
+        "--telemetry-auth",
+        metavar="KEY",
+        action="append",
+        help="Authorized public key prefix for telemetry requests (can be specified multiple times)"
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
+
+    # Set up authorized telemetry keys
+    global authorized_telemetry_keys
+    if args.telemetry_auth:
+        authorized_telemetry_keys = set(args.telemetry_auth)
+        logger.info(f"Authorized telemetry keys: {', '.join(authorized_telemetry_keys)}")
 
     # Connect to MeshCore device
     meshcore = None
