@@ -10,19 +10,20 @@ Ping responder for MeshCore networks!
 - Compact, low-airtime response format
 - GPS distance calculation for direct messages
 - Statistics tracking (pings received, pongs sent, max distance)
-- Robust error handling for 24/7 operation
+- Auto-reconnect on connection loss for 24/7 operation
+- Rate limiting to prevent abuse
 - Python 3.14 optimized with modern type hints
 
 ## Response Format
 
 **Channel messages:**
 ```
-@[sender] [emoji] HH:MM:SSZ, snr:XdB, hops:N, route:a1.b2.c3, Xkm
+@[sender] [emoji] HH:MM:SSZ, snr:XdB, rssi:XdBm, hops:N, route:a1.b2.c3, Xkm
 ```
 
 **Direct messages:**
 ```
-[emoji] HH:MM:SSZ, snr:XdB, direct, Xkm
+[emoji] HH:MM:SSZ, snr:XdB, rssi:XdBm, direct, Xkm
 ```
 
 A random sports ball emoji is selected for each response: 🏉🏀🎾🏈⚽️🎱🥎⚾️🏐
