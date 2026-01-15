@@ -17,13 +17,21 @@ Ping responder for MeshCore networks!
 
 **Channel messages:**
 ```
-@[sender] 🏐HH:MM:SSZ, SNR:X, N hops, a1:b2:c3, Xkm
+@[sender] [emoji] HH:MM:SSZ, diff:Xms, snr:XdB, hops:N, trace:a1.b2.c3, Xkm
 ```
 
 **Direct messages:**
 ```
-🏐HH:MM:SSZ, SNR:X, direct, Xkm
+[emoji] HH:MM:SSZ, diff:Xms, snr:XdB, direct, Xkm
 ```
+
+A random sports ball emoji is selected for each response: 🏉🏀🎾🏈⚽️🎱🥎⚾️🏐
+
+Fields are omitted if unavailable (e.g., `diff` requires message timestamp).
+
+## Trigger Words
+
+Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitive)
 
 ## Installation
 
