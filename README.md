@@ -9,7 +9,7 @@ Ping responder for MeshCore networks!
 - Responds to "ping" messages on channel and direct messages
 - Compact, low-airtime response format
 - GPS distance calculation for direct messages
-- Telemetry tracking (pings received, pongs sent, max distance)
+- Statistics tracking (pings received, pongs sent, max distance)
 - Robust error handling for 24/7 operation
 - Python 3.14 optimized with modern type hints
 
@@ -43,9 +43,6 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 
 # Trigger words for ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
-
-# Trigger words for telemetry requests (case insensitive)
-TELEMETRY_TRIGGER_WORDS = ["stats", "telemetry"]
 ```
 
 ## Trigger Words
@@ -55,10 +52,6 @@ Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitiv
 ## Rate Limiting
 
 To prevent abuse, each sender is limited to 3 ping requests per 6-minute window. Requests exceeding this limit are silently ignored.
-
-## Telemetry Requests
-
-Send a direct message containing `stats` or `telemetry` to request bot statistics. Only authorized public keys can retrieve telemetry data.
 
 ## Installation
 
@@ -91,17 +84,6 @@ uv run main.py -s /dev/ttyUSB0 -c 1
 
 # Enable verbose logging
 uv run main.py -s /dev/ttyUSB0 -v
-
-# Authorize specific public keys for telemetry requests
-uv run main.py -s /dev/ttyUSB0 --telemetry-auth 6be9724012b0
-
-# Multiple authorized keys
-uv run main.py -s /dev/ttyUSB0 --telemetry-auth 6be9724012b0 --telemetry-auth abc123def456
-```
-
-**Telemetry Response Format:**
-```
-📊 Telemetry: X pings, Y pongs, max dist: Z.Zkm (contact_name)
 ```
 
 ## Requirements

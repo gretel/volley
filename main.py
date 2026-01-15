@@ -30,16 +30,13 @@ shutdown_event = asyncio.Event()
 latest_snr: float | None = None
 latest_path_info: dict[str, Any] = {}
 
-# Telemetry tracking
-telemetry = {
+# Statistics tracking
+stats = {
     "pings_received": 0,
     "pongs_sent": 0,
     "max_distance_km": 0.0,
     "max_distance_contact": None,
 }
-
-# Authorized public key prefixes for telemetry requests (set via command line)
-authorized_telemetry_keys: set[str] = set()
 
 # Rate limiting: track timestamps of requests per public key
 # Key: pubkey_prefix, Value: list of request timestamps (unix time)
@@ -58,9 +55,6 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 
 # Trigger words that activate ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
-
-# Telemetry trigger words (case insensitive)
-TELEMETRY_TRIGGER_WORDS = ["stats", "telemetry"]
 
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
@@ -237,7 +231,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
     async def handle_ping_message(event, is_channel=True):
         """Handle incoming messages (channel or direct) and respond to pings."""
         try:
-            global latest_snr, latest_path_info, telemetry
+            global latest_snr, latest_path_info, stats
 
             msg = event.payload or {}
             text = msg.get("text", "")
@@ -255,37 +249,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 sender = msg.get("pubkey_prefix", "unknown")
                 logger.debug(f"Direct message from {sender}: {text}")
 
-            # Check if this is a telemetry request (from authorized users only)
-            text_lower = text.lower()
-            if any(trigger in text_lower for trigger in TELEMETRY_TRIGGER_WORDS):
-                # Only respond to telemetry requests from authorized keys
-                if not is_channel:  # Only direct messages
-                    pubkey_prefix = msg.get("pubkey_prefix", "")
-                    if pubkey_prefix in authorized_telemetry_keys:
-                        logger.info(f"Telemetry request from authorized user {pubkey_prefix}")
-
-                        # Build telemetry response
-                        telem_reply = (
-                            f"📊 Telemetry: {telemetry['pings_received']} pings, "
-                            f"{telemetry['pongs_sent']} pongs, "
-                            f"max dist: {telemetry['max_distance_km']:.1f}km "
-                            f"({telemetry['max_distance_contact'] or 'N/A'})"
-                        )
-
-                        # Send telemetry response
-                        contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
-                        if contact:
-                            result = await meshcore.commands.send_msg(contact, telem_reply)
-                            if result.type == EventType.ERROR:
-                                logger.error(f"Failed to send telemetry: {result.payload}")
-                            else:
-                                logger.info("Telemetry sent successfully")
-                        return
-                    else:
-                        logger.debug(f"Telemetry request from unauthorized user {pubkey_prefix}, ignoring")
-                        return
-
             # Check if this is a ping message
+            text_lower = text.lower()
             if not any(trigger in text_lower for trigger in TRIGGER_WORDS):
                 logger.debug("Not a trigger message, ignoring")
                 return
@@ -318,7 +283,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 logger.info(f"Ping detected from {sender} (direct message)")
 
             # Track ping received
-            telemetry["pings_received"] += 1
+            stats["pings_received"] += 1
 
             # Gather available data
             # Try to get SNR from message payload first, fallback to RX_LOG_DATA
@@ -347,9 +312,9 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                         distance_km = calculate_distance(device_lat, device_lon, sender_lat, sender_lon)
 
                         # Track max distance
-                        if distance_km is not None and distance_km > telemetry["max_distance_km"]:
-                            telemetry["max_distance_km"] = distance_km
-                            telemetry["max_distance_contact"] = contact.get("adv_name", sender)
+                        if distance_km is not None and distance_km > stats["max_distance_km"]:
+                            stats["max_distance_km"] = distance_km
+                            stats["max_distance_contact"] = contact.get("adv_name", sender)
 
             # Build compact response
             reply = build_pong_message(sender, snr, path_len, path_nodes,
@@ -391,14 +356,14 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 logger.error(f"Failed to send pong: {result.payload}")
             else:
                 logger.info("Pong sent successfully")
-                telemetry["pongs_sent"] += 1
+                stats["pongs_sent"] += 1
 
-                # Log telemetry periodically
-                if telemetry["pongs_sent"] % 10 == 0:
-                    logger.info(f"Telemetry: {telemetry['pings_received']} pings, "
-                               f"{telemetry['pongs_sent']} pongs sent, "
-                               f"max distance: {telemetry['max_distance_km']:.1f}km "
-                               f"({telemetry['max_distance_contact'] or 'N/A'})")
+                # Log stats periodically
+                if stats["pongs_sent"] % 10 == 0:
+                    logger.info(f"Stats: {stats['pings_received']} pings, "
+                               f"{stats['pongs_sent']} pongs sent, "
+                               f"max distance: {stats['max_distance_km']:.1f}km "
+                               f"({stats['max_distance_contact'] or 'N/A'})")
 
             # Reset tracked data after use
             latest_snr = None
@@ -505,24 +470,11 @@ Examples:
         help="Enable verbose debug logging"
     )
 
-    parser.add_argument(
-        "--telemetry-auth",
-        metavar="KEY",
-        action="append",
-        help="Authorized public key prefix for telemetry requests (can be specified multiple times)"
-    )
-
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
-
-    # Set up authorized telemetry keys
-    global authorized_telemetry_keys
-    if args.telemetry_auth:
-        authorized_telemetry_keys = set(args.telemetry_auth)
-        logger.info(f"Authorized telemetry keys: {', '.join(authorized_telemetry_keys)}")
 
     # Connect to MeshCore device
     meshcore = None
@@ -573,14 +525,14 @@ Examples:
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     finally:
-        # Print final telemetry
+        # Print final stats
         logger.info("=" * 50)
-        logger.info("Final Telemetry:")
-        logger.info(f"  Pings received: {telemetry['pings_received']}")
-        logger.info(f"  Pongs sent: {telemetry['pongs_sent']}")
-        if telemetry['max_distance_km'] > 0:
-            logger.info(f"  Max distance: {telemetry['max_distance_km']:.1f}km "
-                       f"({telemetry['max_distance_contact'] or 'N/A'})")
+        logger.info("Final Statistics:")
+        logger.info(f"  Pings received: {stats['pings_received']}")
+        logger.info(f"  Pongs sent: {stats['pongs_sent']}")
+        if stats['max_distance_km'] > 0:
+            logger.info(f"  Max distance: {stats['max_distance_km']:.1f}km "
+                       f"({stats['max_distance_contact'] or 'N/A'})")
         logger.info("=" * 50)
 
         # Cleanup
