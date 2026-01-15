@@ -1,6 +1,8 @@
 # Volley
 
-KISS-style ping responder for MeshCore mesh networks.
+> A volley in tennis is a shot where the ball is struck before it bounces on the ground
+
+Ping responder for MeshCore networks!
 
 ## Features
 
