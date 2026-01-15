@@ -29,6 +29,25 @@ A random sports ball emoji is selected for each response: 🏉🏀🎾🏈⚽️
 
 Fields are omitted if unavailable.
 
+## Configuration
+
+The bot's behavior can be customized by editing constants in `main.py`:
+
+```python
+# Rate limiting
+RATE_LIMIT_REQUESTS = 3      # Max requests per window
+RATE_LIMIT_WINDOW = 360      # Window duration in seconds (6 minutes)
+
+# Response emojis (randomly selected)
+RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '⚾️', '🏐']
+
+# Trigger words for ping responses (case insensitive)
+TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
+
+# Trigger words for telemetry requests (case insensitive)
+TELEMETRY_TRIGGER_WORDS = ["stats", "telemetry"]
+```
+
 ## Trigger Words
 
 Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitive)

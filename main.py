@@ -45,6 +45,23 @@ authorized_telemetry_keys: set[str] = set()
 # Key: pubkey_prefix, Value: list of request timestamps (unix time)
 rate_limit_tracker: dict[str, list[float]] = {}
 
+# ============================================================================
+# Configuration Constants
+# ============================================================================
+
+# Rate limiting configuration
+RATE_LIMIT_REQUESTS = 3  # Maximum number of requests
+RATE_LIMIT_WINDOW = 360  # Time window in seconds (6 minutes)
+
+# Response emoji pool (randomly selected for each response)
+RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '⚾️', '🏐']
+
+# Trigger words that activate ping responses (case insensitive)
+TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
+
+# Telemetry trigger words (case insensitive)
+TELEMETRY_TRIGGER_WORDS = ["stats", "telemetry"]
+
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
     """Parse RX_LOG event payload to extract LoRa packet details.
@@ -146,7 +163,7 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
     parts = []
 
     # Randomly select a sports ball emoji
-    emoji = random.choice(['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '⚾️', '🏐'])
+    emoji = random.choice(RESPONSE_EMOJIS)
 
     # Add emoji with space and timestamp
     now = datetime.now(timezone.utc)
@@ -197,10 +214,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
     """Run the bot event loop with error handling."""
     global latest_snr, latest_path_info, rate_limit_tracker
 
-    # Rate limiting configuration
-    RATE_LIMIT_REQUESTS = 3
-    RATE_LIMIT_WINDOW = 360  # 6 minutes in seconds
-
     async def handle_rx_log_data(event):
         """Track SNR and path info from RX_LOG_DATA events."""
         try:
@@ -244,7 +257,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
             # Check if this is a telemetry request (from authorized users only)
             text_lower = text.lower()
-            if "stats" in text_lower or "telemetry" in text_lower:
+            if any(trigger in text_lower for trigger in TELEMETRY_TRIGGER_WORDS):
                 # Only respond to telemetry requests from authorized keys
                 if not is_channel:  # Only direct messages
                     pubkey_prefix = msg.get("pubkey_prefix", "")
@@ -272,8 +285,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                         logger.debug(f"Telemetry request from unauthorized user {pubkey_prefix}, ignoring")
                         return
 
-            # Check if this is a ping message (ping, test, pink, echo)
-            if not any(trigger in text_lower for trigger in ["ping", "test", "pink", "echo"]):
+            # Check if this is a ping message
+            if not any(trigger in text_lower for trigger in TRIGGER_WORDS):
                 logger.debug("Not a trigger message, ignoring")
                 return
 
