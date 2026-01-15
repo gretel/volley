@@ -26,9 +26,8 @@ logger = logging.getLogger("volley")
 # Shutdown event for graceful termination
 shutdown_event = asyncio.Event()
 
-# Global state for tracking latest SNR, RSSI and path info
+# Global state for tracking latest SNR and path info
 latest_snr: float | None = None
-latest_rssi: float | None = None
 latest_path_info: dict[str, Any] = {}
 
 # Telemetry tracking
@@ -138,8 +137,7 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        path_nodes: list[str] | None, is_direct: bool = False,
-                       distance_km: float | None = None, time_diff_ms: int | None = None,
-                       rssi: float | None = None) -> str:
+                       distance_km: float | None = None, time_diff_ms: int | None = None) -> str:
     """Build compact pong response message.
 
     Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, hops:N, trace:a1.b2.c3
@@ -165,10 +163,6 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
     # Add SNR if available
     if snr is not None:
         parts.append(f"snr:{snr:.0f}dB")
-
-    # Add RSSI if available
-    if rssi is not None:
-        parts.append(f"rssi:{rssi:.0f}dBm")
 
     # Add hop count if available
     # 255 hops is a special value meaning "direct" (no routing)
@@ -208,22 +202,18 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
 
 async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore):
     """Run the bot event loop with error handling."""
-    global latest_snr, latest_rssi, latest_path_info
+    global latest_snr, latest_path_info
 
     async def handle_rx_log_data(event):
-        """Track SNR, RSSI and path info from RX_LOG_DATA events."""
+        """Track SNR and path info from RX_LOG_DATA events."""
         try:
-            global latest_snr, latest_rssi, latest_path_info
+            global latest_snr, latest_path_info
 
             rx = event.payload or {}
 
             # Extract SNR if available
             if "snr" in rx:
                 latest_snr = rx["snr"]
-
-            # Extract RSSI if available
-            if "rssi" in rx:
-                latest_rssi = rx["rssi"]
 
             # Parse path information
             raw = rx.get("payload")
@@ -273,9 +263,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Try to get SNR from message payload first, fallback to RX_LOG_DATA
             snr = msg.get("snr") if msg.get("snr") is not None else latest_snr
 
-            # Try to get RSSI from message payload first, fallback to RX_LOG_DATA
-            rssi = msg.get("rssi") if msg.get("rssi") is not None else latest_rssi
-
             # Calculate time difference if message has timestamp
             time_diff_ms = None
             msg_timestamp = msg.get("timestamp")
@@ -318,7 +305,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Build compact response
             reply = build_pong_message(sender, snr, path_len, path_nodes,
                                        is_direct=not is_channel, distance_km=distance_km,
-                                       time_diff_ms=time_diff_ms, rssi=rssi)
+                                       time_diff_ms=time_diff_ms)
 
             logger.info(f"Sending pong: {reply}")
 
@@ -367,7 +354,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
             # Reset tracked data after use
             latest_snr = None
-            latest_rssi = None
             latest_path_info = {}
         except Exception as e:
             logger.error(f"Error handling ping message: {e}", exc_info=args.verbose)
