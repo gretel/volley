@@ -37,7 +37,14 @@ Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitiv
 
 ```bash
 # Install uv if not already installed
+# Option 1: Using the standalone installer
 curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Option 2: Using Homebrew (macOS/Linux)
+brew install uv
+
+# Option 3: Using apt (Debian/Ubuntu)
+sudo apt update && sudo apt install -y uv
 
 # Install dependencies
 uv sync

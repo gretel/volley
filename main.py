@@ -96,16 +96,6 @@ def parse_rx_log_data(payload: Any) -> dict[str, Any]:
     return result
 
 
-def format_compact_path(path_nodes: list[str]) -> str:
-    """Format path nodes compactly with colon separators.
-
-    Example: ['a1', 'b2', 'c3'] -> 'a1:b2:c3'
-    """
-    if not path_nodes:
-        return ""
-    return ":".join(path_nodes)
-
-
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float | None:
     """Calculate great-circle distance between two GPS coordinates in kilometers.
 
@@ -240,10 +230,10 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 if ":" in text:
                     sender = text.split(":", 1)[0].strip()
                 chan = msg.get("channel_idx")
-                logger.info(f"Channel {chan} message from {sender}: {text}")
+                logger.debug(f"Channel {chan} message from {sender}: {text}")
             else:
                 sender = msg.get("pubkey_prefix", "unknown")
-                logger.info(f"Direct message from {sender}: {text}")
+                logger.debug(f"Direct message from {sender}: {text}")
 
             # Check if this is a ping message (ping, test, pink, echo)
             text_lower = text.lower()
