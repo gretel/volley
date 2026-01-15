@@ -127,7 +127,7 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        path_nodes: list[str] | None, is_direct: bool = False,
-                       distance_km: float | None = None, time_diff_ms: int | None = None) -> str:
+                       distance_km: float | None = None) -> str:
     """Build compact pong response message.
 
     Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, hops:N, trace:a1.b2.c3
@@ -145,10 +145,6 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
     now = datetime.now(timezone.utc)
     time_str = now.strftime("%H:%M:%SZ")
     parts.append(f"{emoji} {time_str}")
-
-    # Add time difference if available
-    if time_diff_ms is not None:
-        parts.append(f"diff:{time_diff_ms}ms")
 
     # Add SNR if available
     if snr is not None:
@@ -253,18 +249,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Try to get SNR from message payload first, fallback to RX_LOG_DATA
             snr = msg.get("snr") if msg.get("snr") is not None else latest_snr
 
-            # Calculate time difference if message has timestamp
-            time_diff_ms = None
-            msg_timestamp = msg.get("timestamp")
-            if msg_timestamp:
-                try:
-                    # Message timestamp is in seconds, convert to milliseconds
-                    now_ms = datetime.now(timezone.utc).timestamp() * 1000
-                    msg_ms = msg_timestamp * 1000
-                    time_diff_ms = int(now_ms - msg_ms)
-                except (ValueError, TypeError):
-                    pass
-
             # Get path info from latest RX_LOG_DATA or message payload
             path_len = msg.get("path_len")
             path_nodes = None
@@ -294,8 +278,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
             # Build compact response
             reply = build_pong_message(sender, snr, path_len, path_nodes,
-                                       is_direct=not is_channel, distance_km=distance_km,
-                                       time_diff_ms=time_diff_ms)
+                                       is_direct=not is_channel, distance_km=distance_km)
 
             logger.info(f"Sending pong: {reply}")
 
