@@ -17,7 +17,7 @@ Ping responder for MeshCore networks!
 
 **Channel messages:**
 ```
-@[sender] [emoji] HH:MM:SSZ, snr:XdB, hops:N, trace:a1.b2.c3, Xkm
+@[sender] [emoji] HH:MM:SSZ, snr:XdB, hops:N, route:a1.b2.c3, Xkm
 ```
 
 **Direct messages:**
@@ -32,6 +32,10 @@ Fields are omitted if unavailable.
 ## Trigger Words
 
 Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitive)
+
+## Rate Limiting
+
+To prevent abuse, each sender is limited to 3 ping requests per 6-minute window. Requests exceeding this limit are silently ignored.
 
 ## Telemetry Requests
 

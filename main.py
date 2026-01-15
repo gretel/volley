@@ -41,6 +41,10 @@ telemetry = {
 # Authorized public key prefixes for telemetry requests (set via command line)
 authorized_telemetry_keys: set[str] = set()
 
+# Rate limiting: track timestamps of requests per public key
+# Key: pubkey_prefix, Value: list of request timestamps (unix time)
+rate_limit_tracker: dict[str, list[float]] = {}
+
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
     """Parse RX_LOG event payload to extract LoRa packet details.
@@ -133,7 +137,7 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        distance_km: float | None = None) -> str:
     """Build compact pong response message.
 
-    Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, hops:N, trace:a1.b2.c3
+    Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, hops:N, route:a1.b2.c3
     Format (direct): 🏐 HH:MM:SSZ, snr:XdB, direct
     Omits fields that are unavailable.
     Special case: 255 hops means "direct" (no routing).
@@ -162,11 +166,11 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
             parts.append(f"hops:{path_len}")
 
     # Add path if available (but not for direct messages)
-    # Use dots instead of colons for trace
+    # Use dots instead of colons for route
     if path_nodes and path_len != 255:
         path_str = ".".join(path_nodes)
         if path_str:
-            parts.append(f"trace:{path_str}")
+            parts.append(f"route:{path_str}")
 
     # Add distance if available
     if distance_km is not None:
@@ -191,7 +195,11 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
 
 async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore):
     """Run the bot event loop with error handling."""
-    global latest_snr, latest_path_info
+    global latest_snr, latest_path_info, rate_limit_tracker
+
+    # Rate limiting configuration
+    RATE_LIMIT_REQUESTS = 3
+    RATE_LIMIT_WINDOW = 360  # 6 minutes in seconds
 
     async def handle_rx_log_data(event):
         """Track SNR and path info from RX_LOG_DATA events."""
@@ -268,6 +276,28 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             if not any(trigger in text_lower for trigger in ["ping", "test", "pink", "echo"]):
                 logger.debug("Not a trigger message, ignoring")
                 return
+
+            # Rate limiting check
+            now = datetime.now(timezone.utc).timestamp()
+            requester_key = sender if is_channel else msg.get("pubkey_prefix", sender)
+
+            # Initialize tracker for this key if needed
+            if requester_key not in rate_limit_tracker:
+                rate_limit_tracker[requester_key] = []
+
+            # Remove timestamps older than the rate limit window
+            rate_limit_tracker[requester_key] = [
+                ts for ts in rate_limit_tracker[requester_key]
+                if now - ts < RATE_LIMIT_WINDOW
+            ]
+
+            # Check if rate limit exceeded
+            if len(rate_limit_tracker[requester_key]) >= RATE_LIMIT_REQUESTS:
+                logger.info(f"Rate limit exceeded for {requester_key}, ignoring ping")
+                return
+
+            # Add current request to tracker
+            rate_limit_tracker[requester_key].append(now)
 
             if is_channel:
                 logger.info(f"Ping detected from {sender} on channel {chan}")
