@@ -261,6 +261,13 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             msg = event.payload or {}
             text = msg.get("text", "")
 
+            # Debug: log the full message to see what fields are available
+            logger.debug(f"Message payload keys: {list(msg.keys())}")
+            if "snr" in msg:
+                logger.debug(f"Message has SNR: {msg['snr']}")
+            if "rssi" in msg:
+                logger.debug(f"Message has RSSI: {msg['rssi']}")
+
             # Extract sender from message
             # Channel format: "sender: message"
             # Direct message: use pubkey_prefix
@@ -394,9 +401,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                                f"max distance: {stats['max_distance_km']:.1f}km "
                                f"({stats['max_distance_contact'] or 'N/A'})")
 
-            # Reset tracked data after use
-            latest_snr = None
-            latest_rssi = None
+            # Don't reset SNR/RSSI - let them be overwritten by new RX_LOG_DATA events
+            # Only reset path info as it's message-specific
             latest_path_info = {}
         except Exception as e:
             logger.error(f"Error handling ping message: {e}", exc_info=args.verbose)
