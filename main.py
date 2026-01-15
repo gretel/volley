@@ -208,7 +208,7 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
 
 async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore):
     """Run the bot event loop with error handling."""
-    global latest_snr, latest_path_info
+    global latest_snr, latest_rssi, latest_path_info
 
     async def handle_rx_log_data(event):
         """Track SNR, RSSI and path info from RX_LOG_DATA events."""
