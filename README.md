@@ -26,8 +26,6 @@ Ping responder for MeshCore networks!
 [emoji] HH:MM:SSZ, snr:XdB, rssi:XdBm, direct, Xkm
 ```
 
-A random sports ball emoji is selected for each response: 🏉🏀🎾🏈⚽️🎱🥎⚾️🏐
-
 Fields are omitted if unavailable.
 
 ## Configuration
@@ -77,8 +75,8 @@ uv sync
 # Serial connection
 uv run main.py -s /dev/ttyUSB0
 
-# TCP connection
-uv run main.py -t 192.168.1.100:4000
+# TCP connection (default port: 5000)
+uv run main.py -t 192.168.1.100:5000
 
 # Specify channel (default: 1)
 uv run main.py -s /dev/ttyUSB0 -c 1
