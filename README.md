@@ -21,12 +21,17 @@ Ping responder for MeshCore networks!
 
 **Channel messages:**
 ```
-@[sender] [emoji] HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,hops:N,route:a1.b2.c3,Xkm
+@[sender] [emoji] HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,hops:N,route:a1.b2.c3,dist:Xkm
 ```
 
 **Direct messages:**
 ```
-[emoji] HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,direct,Xkm
+[emoji] HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,direct,dist:Xkm
+```
+
+**Info request (info/help/?):**
+```
+https://github.com/gretel/volley 73 DO2THX
 ```
 
 Fields are omitted if unavailable.
@@ -52,7 +57,9 @@ PREFERRED_REPEATER_KEY = None  # Public key prefix of nearby repeater
 
 ## Trigger Words
 
-Responds to messages starting with: `ping`, `test`, `pink`, `echo` (case insensitive)
+**Ping responses:** `ping`, `test`, `pink`, `echo` (case insensitive)
+
+**Info responses:** `info`, `help`, `?` (case insensitive)
 
 Note: Trigger words must appear at the beginning of the message to avoid responding to bot replies or messages that merely mention these words.
 

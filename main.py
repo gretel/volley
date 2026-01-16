@@ -60,6 +60,9 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 # Trigger words that activate ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 
+# Info trigger words that return bot information
+INFO_WORDS = ["info", "help", "?"]
+
 # Zipcode pattern for distance calculation (5 digits for German zipcodes)
 ZIPCODE_PATTERN = r"^\d{5}$"
 
@@ -282,16 +285,16 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
 
     # Add distance if available
     if distance_km is not None:
-        # Format distance compactly
+        # Format distance compactly with dist: prefix
         if distance_km < 1:
             # Less than 1km, show in meters
-            parts.append(f"{int(distance_km * 1000)}m")
+            parts.append(f"dist:{int(distance_km * 1000)}m")
         elif distance_km < 10:
             # Less than 10km, show with 1 decimal
-            parts.append(f"{distance_km:.1f}km")
+            parts.append(f"dist:{distance_km:.1f}km")
         else:
             # 10km or more, show as integer
-            parts.append(f"{int(distance_km)}km")
+            parts.append(f"dist:{int(distance_km)}km")
 
     # Build final message with @mention in square brackets (MeshCore format)
     message = ",".join(parts)
@@ -381,6 +384,24 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 check_text = text.split(":", 1)[1].strip()
 
             text_lower = check_text.lower()
+
+            # Check if this is an info request
+            is_info = any(text_lower.startswith(info_word) for info_word in INFO_WORDS)
+
+            if is_info:
+                # Send info response
+                info_reply = "https://github.com/gretel/volley 73 DO2THX"
+                logger.info(f"Info request from {sender}, responding with: {info_reply}")
+
+                if is_channel:
+                    await meshcore.commands.send_chan_msg(chan, info_reply)
+                else:
+                    pubkey_prefix = msg.get("pubkey_prefix")
+                    if pubkey_prefix:
+                        contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
+                        if contact:
+                            await meshcore.commands.send_msg(contact, info_reply)
+                return
 
             # Check if message is a zipcode (5 digits)
             is_zipcode = re.match(ZIPCODE_PATTERN, check_text.strip())
