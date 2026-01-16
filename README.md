@@ -141,23 +141,30 @@ This improves delivery success rate and helps track network topology.
 
 - Python 3.14+
 - meshcore>=2.2.5
-- pgeocode>=0.5.0 (for zipcode coordinate lookup)
-- zipcodes.db (included, for phone prefix lookup)
+- zipcodes.db (included - 1MB SQLite database with coordinates)
+
+**No heavy dependencies!** Unlike other geocoding solutions, volley uses a pre-built database with coordinates, eliminating the need for numpy/pandas (72MB+ of dependencies).
 
 ## Data Sources
 
-- **Zipcode coordinates**: [pgeocode](https://pypi.org/project/pgeocode/) - Offline geocoding library
 - **German zipcodes & phone prefixes**: [German-Zip-Codes.csv](https://gist.github.com/jbspeakr/4565964) by [@jbspeakr](https://github.com/jbspeakr)
+- **Coordinates**: Pre-computed using [pgeocode](https://pypi.org/project/pgeocode/) and stored in SQLite database
 
 ## Building the Database
 
-The `zipcodes.db` file is included in the repository. To rebuild it from the CSV:
+The `zipcodes.db` file (with coordinates) is included in the repository. To rebuild from scratch:
 
 ```bash
+# Step 1: Convert CSV to SQLite
 python3 convert_csv_to_db.py
+
+# Step 2: Add coordinates (requires pgeocode temporarily)
+pip install pgeocode  # Temporary: only needed for building
+python3 add_coordinates.py
+pip uninstall -y pgeocode numpy pandas  # Clean up heavy dependencies
 ```
 
-This will convert `German-Zip-Codes.csv` to `zipcodes.db` with proper indexing for fast lookups.
+The final database is only ~1MB and contains everything needed for offline lookups.
 
 ## License
 

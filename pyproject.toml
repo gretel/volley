@@ -5,5 +5,4 @@ description = "KISS-style ping responder for MeshCore mesh networks"
 requires-python = ">=3.14"
 dependencies = [
     "meshcore>=2.2.5",
-    "pgeocode>=0.5.0",
 ]

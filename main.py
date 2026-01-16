@@ -19,7 +19,6 @@ from pathlib import Path
 from typing import Any
 
 from meshcore import MeshCore, EventType
-import pgeocode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -73,9 +72,6 @@ DB_PATH = Path(__file__).parent / "zipcodes.db"
 # Optional repeater configuration (set via command line or leave None)
 # When configured, responses will be routed via this repeater for better reliability
 PREFERRED_REPEATER_KEY: str | None = None  # Set to repeater's public key prefix
-
-# Global pgeocode instance (initialized once at startup)
-nomi: pgeocode.Nominatim | None = None
 
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
@@ -136,30 +132,30 @@ def parse_rx_log_data(payload: Any) -> dict[str, Any]:
 
 
 def zipcode_to_coords(zipcode: str) -> tuple[float, float] | None:
-    """Convert German zipcode to coordinates using pgeocode.
+    """Convert German zipcode to coordinates using local database.
 
     Returns (latitude, longitude) or None if lookup fails.
-    Uses offline database lookup for fast, reliable results.
+    Uses offline SQLite database with pre-computed coordinates.
     """
-    global nomi
-
-    if nomi is None:
-        logger.warning("pgeocode not initialized, zipcode lookup disabled")
-        return None
-
     try:
-        result = nomi.query_postal_code(zipcode)
+        if not DB_PATH.exists():
+            logger.warning(f"Database not found: {DB_PATH}")
+            return None
 
-        # Check if result is valid
-        if result is not None and not result.empty:
-            lat = result.latitude
-            lon = result.longitude
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
 
-            # pandas may return NaN values
-            if lat is not None and lon is not None and not (
-                (hasattr(lat, '__iter__') and any(str(v) == 'nan' for v in [lat, lon])) or
-                str(lat) == 'nan' or str(lon) == 'nan'
-            ):
+        # Look up coordinates in database
+        cursor.execute(
+            "SELECT latitude, longitude FROM zipcodes WHERE zipcode = ?",
+            (zipcode,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            lat, lon = result
+            if lat is not None and lon is not None:
                 logger.debug(f"Zipcode {zipcode} -> coords: {lat:.4f}, {lon:.4f}")
                 return (float(lat), float(lon))
 
@@ -662,8 +658,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
 async def main():
     """Main entry point for volley."""
-    global nomi
-
     parser = argparse.ArgumentParser(
         description="Volley - Compact ping responder for low airtime",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -720,21 +714,12 @@ Examples:
         PREFERRED_REPEATER_KEY = args.via_repeater
         logger.info(f"Repeater mode enabled: routing via {PREFERRED_REPEATER_KEY}")
 
-    # Initialize pgeocode for German zipcodes
-    logger.info("Initializing pgeocode for German zipcodes...")
-    try:
-        nomi = pgeocode.Nominatim('de')
-        logger.info("✅ pgeocode initialized")
-    except Exception as e:
-        logger.error(f"Failed to initialize pgeocode: {e}")
-        logger.warning("Zipcode/prefix lookups will be disabled")
-
     # Check if database exists
     if not DB_PATH.exists():
         logger.warning(f"Database not found: {DB_PATH}")
-        logger.warning("Phone prefix lookups will be disabled")
+        logger.warning("Zipcode/prefix lookups will be disabled")
     else:
-        logger.info(f"✅ Database loaded: {DB_PATH}")
+        logger.info(f"✅ Database ready: {DB_PATH}")
 
     # Connect to MeshCore device with auto-reconnect
     meshcore = None
