@@ -85,38 +85,45 @@ To prevent abuse, each sender is limited to 3 ping requests per 6-minute window.
 
 ## Installation
 
+### Option 1: Using uv (recommended)
+
 ```bash
 # Install uv if not already installed
-# Option 1: Using the standalone installer
 curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Option 2: Using Homebrew (macOS/Linux)
-brew install uv
-
-# Option 3: Using apt (Debian/Ubuntu)
-sudo apt update && sudo apt install -y uv
 
 # Install dependencies
 uv sync
+```
+
+### Option 2: Using pip
+
+```bash
+# Create virtual environment (optional but recommended)
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
 ```
 
 ## Usage
 
 ```bash
 # Serial connection
-uv run main.py -s /dev/ttyUSB0
+python3 main.py -s /dev/ttyUSB0
+# Or with uv: uv run main.py -s /dev/ttyUSB0
 
 # TCP connection (default port: 5000)
-uv run main.py -t 192.168.1.100:5000
+python3 main.py -t 192.168.1.100:5000
 
 # Specify channel (default: 1)
-uv run main.py -s /dev/ttyUSB0 -c 1
+python3 main.py -s /dev/ttyUSB0 -c 1
 
 # Enable verbose logging
-uv run main.py -s /dev/ttyUSB0 -v
+python3 main.py -s /dev/ttyUSB0 -v
 
 # Route via nearby repeater (path injection + tracking)
-uv run main.py -s /dev/ttyUSB0 --via-repeater bd
+python3 main.py -s /dev/ttyUSB0 --via-repeater bd
 ```
 
 ## Repeater Mode
