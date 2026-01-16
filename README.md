@@ -7,12 +7,14 @@ Ping responder for MeshCore networks!
 ## Features
 
 - Responds to "ping" messages on channel and direct messages
-- Zipcode distance calculation (5-digit German/Austrian zipcodes)
+- Zipcode distance calculation (5-digit German zipcodes)
+- Phone prefix distance calculation (German phone area codes)
 - Compact, low-airtime response format
 - GPS distance calculation for direct messages
 - Statistics tracking (pings received, pongs sent, max distance)
 - Auto-reconnect on connection loss for 24/7 operation
 - Rate limiting to prevent abuse
+- Offline operation with local database
 - Python 3.14 optimized with modern type hints
 
 ## Response Format
@@ -54,14 +56,28 @@ Responds to messages starting with: `ping`, `test`, `pink`, `echo` (case insensi
 
 Note: Trigger words must appear at the beginning of the message to avoid responding to bot replies or messages that merely mention these words.
 
-## Zipcode Distance Calculation
+## Distance Calculation
 
-Send a 5-digit German or Austrian zipcode (e.g., `22765`, `1010`) to calculate approximate distance from the bot's location to that zipcode. The bot uses an offline database (pyGeoDb) for fast, reliable lookups without API rate limits.
+The bot supports two types of location-based distance calculations:
+
+### Zipcode Lookup
+
+Send a 5-digit German zipcode (e.g., `22765`, `10115`) to calculate approximate distance from the bot's location.
 
 Example:
-- Send `22765` → Bot responds with distance from its location to Hamburg, Germany
+- Send `22765` → Bot responds with distance to Hamburg, Germany
 - Works for both channel and direct messages
-- Distance is calculated using the same GPS coordinates as the bot's companion device
+- Uses offline database with pgeocode for fast, reliable lookups
+
+### Phone Prefix Lookup
+
+Send a German phone area code (e.g., `0241`, `030`) to calculate distance to that region.
+
+Example:
+- Send `0241` → Bot responds with distance to Aachen
+- Send `040` → Bot responds with distance to Hamburg
+- Works for both channel and direct messages
+- Automatically resolves prefix to zipcode and calculates distance
 
 ## Rate Limiting
 
@@ -118,7 +134,23 @@ This improves delivery success rate and helps track network topology.
 
 - Python 3.14+
 - meshcore>=2.2.5
-- pyGeoDb>=1.0.0 (for zipcode distance calculation)
+- pgeocode>=0.5.0 (for zipcode coordinate lookup)
+- zipcodes.db (included, for phone prefix lookup)
+
+## Data Sources
+
+- **Zipcode coordinates**: [pgeocode](https://pypi.org/project/pgeocode/) - Offline geocoding library
+- **German zipcodes & phone prefixes**: [German-Zip-Codes.csv](https://gist.github.com/jbspeakr/4565964) by [@jbspeakr](https://github.com/jbspeakr)
+
+## Building the Database
+
+The `zipcodes.db` file is included in the repository. To rebuild it from the CSV:
+
+```bash
+python3 convert_csv_to_db.py
+```
+
+This will convert `German-Zip-Codes.csv` to `zipcodes.db` with proper indexing for fast lookups.
 
 ## License
 

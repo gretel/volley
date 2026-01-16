@@ -12,11 +12,14 @@ import math
 import random
 import re
 import signal
+import sqlite3
 import sys
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from meshcore import MeshCore, EventType
+import pgeocode
 
 logging.basicConfig(
     level=logging.INFO,
@@ -58,12 +61,21 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 # Trigger words that activate ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 
-# Zipcode pattern for distance calculation (5 digits for DE/AT zipcodes)
+# Zipcode pattern for distance calculation (5 digits for German zipcodes)
 ZIPCODE_PATTERN = r"^\d{5}$"
+
+# Phone prefix pattern (4-5 digits starting with 0)
+PREFIX_PATTERN = r"^0\d{3,4}$"
+
+# Database path for zipcode/prefix lookups
+DB_PATH = Path(__file__).parent / "zipcodes.db"
 
 # Optional repeater configuration (set via command line or leave None)
 # When configured, responses will be routed via this repeater for better reliability
 PREFERRED_REPEATER_KEY: str | None = None  # Set to repeater's public key prefix
+
+# Global pgeocode instance (initialized once at startup)
+nomi: pgeocode.Nominatim | None = None
 
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
@@ -124,48 +136,71 @@ def parse_rx_log_data(payload: Any) -> dict[str, Any]:
 
 
 def zipcode_to_coords(zipcode: str) -> tuple[float, float] | None:
-    """Convert German/Austrian zipcode to approximate coordinates using pyGeoDb.
+    """Convert German zipcode to coordinates using pgeocode.
 
     Returns (latitude, longitude) or None if lookup fails.
     Uses offline database lookup for fast, reliable results.
     """
+    global nomi
+
+    if nomi is None:
+        logger.warning("pgeocode not initialized, zipcode lookup disabled")
+        return None
+
     try:
-        from pygeodb import GeoDb
+        result = nomi.query_postal_code(zipcode)
 
-        # Initialize database (first run downloads data automatically)
-        geo = GeoDb()
+        # Check if result is valid
+        if result is not None and not result.empty:
+            lat = result.latitude
+            lon = result.longitude
 
-        # Query for German/Austrian zipcodes
-        result = geo.query(zipcode, country='DE')
-
-        if result and len(result) > 0:
-            # Get first result
-            location = result[0]
-            lat = location.get('latitude')
-            lon = location.get('longitude')
-
-            if lat is not None and lon is not None:
+            # pandas may return NaN values
+            if lat is not None and lon is not None and not (
+                (hasattr(lat, '__iter__') and any(str(v) == 'nan' for v in [lat, lon])) or
+                str(lat) == 'nan' or str(lon) == 'nan'
+            ):
                 logger.debug(f"Zipcode {zipcode} -> coords: {lat:.4f}, {lon:.4f}")
-                return (float(lat), float(lon))
-
-        # Try Austria if German lookup failed
-        result = geo.query(zipcode, country='AT')
-        if result and len(result) > 0:
-            location = result[0]
-            lat = location.get('latitude')
-            lon = location.get('longitude')
-
-            if lat is not None and lon is not None:
-                logger.debug(f"Zipcode {zipcode} (AT) -> coords: {lat:.4f}, {lon:.4f}")
                 return (float(lat), float(lon))
 
         logger.debug(f"No coordinates found for zipcode {zipcode}")
         return None
-    except ImportError:
-        logger.warning("pyGeoDb not available, zipcode lookup disabled")
-        return None
     except Exception as e:
         logger.debug(f"Error looking up zipcode {zipcode}: {e}")
+        return None
+
+
+def prefix_to_zipcode(prefix: str) -> tuple[str, str] | None:
+    """Convert phone prefix to zipcode and city name using local database.
+
+    Returns (zipcode, city) or None if lookup fails.
+    If multiple cities have the same prefix, returns the first one.
+    """
+    try:
+        if not DB_PATH.exists():
+            logger.warning(f"Database not found: {DB_PATH}")
+            return None
+
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+
+        # Look up prefix in database (get first result)
+        cursor.execute(
+            "SELECT zipcode, city FROM zipcodes WHERE prefix = ? LIMIT 1",
+            (prefix,)
+        )
+        result = cursor.fetchone()
+        conn.close()
+
+        if result:
+            zipcode, city = result
+            logger.debug(f"Prefix {prefix} -> {city} ({zipcode})")
+            return (zipcode, city)
+
+        logger.debug(f"No zipcode found for prefix {prefix}")
+        return None
+    except Exception as e:
+        logger.debug(f"Error looking up prefix {prefix}: {e}")
         return None
 
 
@@ -354,9 +389,12 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Check if message is a zipcode (5 digits)
             is_zipcode = re.match(ZIPCODE_PATTERN, check_text.strip())
 
+            # Check if message is a phone prefix (0XXXX or 0XXX)
+            is_prefix = re.match(PREFIX_PATTERN, check_text.strip())
+
             # Check if message starts with any trigger word
-            if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS) and not is_zipcode:
-                logger.debug("Not a trigger message or zipcode, ignoring")
+            if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS) and not is_zipcode and not is_prefix:
+                logger.debug("Not a trigger message, zipcode, or phone prefix, ignoring")
                 return
 
             # Rate limiting check
@@ -384,6 +422,9 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             if is_zipcode:
                 zipcode = check_text.strip()
                 logger.info(f"Zipcode ping {zipcode} from {sender}" + (f" on channel {chan}" if is_channel else " (direct message)"))
+            elif is_prefix:
+                prefix = check_text.strip()
+                logger.info(f"Phone prefix ping {prefix} from {sender}" + (f" on channel {chan}" if is_channel else " (direct message)"))
             else:
                 if is_channel:
                     logger.info(f"Ping detected from {sender} on channel {chan}")
@@ -431,6 +472,22 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                         if distance_km > stats["max_distance_km"]:
                             stats["max_distance_km"] = distance_km
                             stats["max_distance_contact"] = f"{sender} (zip:{zipcode})"
+            # Try phone prefix-based distance
+            elif is_prefix:
+                prefix = check_text.strip()
+                result = prefix_to_zipcode(prefix)
+                if result:
+                    zipcode, city = result
+                    coords = zipcode_to_coords(zipcode)
+                    if coords:
+                        zip_lat, zip_lon = coords
+                        distance_km = calculate_distance(device_lat, device_lon, zip_lat, zip_lon)
+                        if distance_km is not None:
+                            logger.info(f"Prefix {prefix} ({city}) distance: {distance_km:.1f}km")
+                            # Track max distance
+                            if distance_km > stats["max_distance_km"]:
+                                stats["max_distance_km"] = distance_km
+                                stats["max_distance_contact"] = f"{sender} (prefix:{prefix}, {city})"
             elif not is_channel:
                 # For direct messages, try to get sender's location from contacts
                 pubkey_prefix = msg.get("pubkey_prefix")
@@ -605,6 +662,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
 async def main():
     """Main entry point for volley."""
+    global nomi
+
     parser = argparse.ArgumentParser(
         description="Volley - Compact ping responder for low airtime",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -660,6 +719,22 @@ Examples:
     if args.via_repeater:
         PREFERRED_REPEATER_KEY = args.via_repeater
         logger.info(f"Repeater mode enabled: routing via {PREFERRED_REPEATER_KEY}")
+
+    # Initialize pgeocode for German zipcodes
+    logger.info("Initializing pgeocode for German zipcodes...")
+    try:
+        nomi = pgeocode.Nominatim('de')
+        logger.info("✅ pgeocode initialized")
+    except Exception as e:
+        logger.error(f"Failed to initialize pgeocode: {e}")
+        logger.warning("Zipcode/prefix lookups will be disabled")
+
+    # Check if database exists
+    if not DB_PATH.exists():
+        logger.warning(f"Database not found: {DB_PATH}")
+        logger.warning("Phone prefix lookups will be disabled")
+    else:
+        logger.info(f"✅ Database loaded: {DB_PATH}")
 
     # Connect to MeshCore device with auto-reconnect
     meshcore = None
