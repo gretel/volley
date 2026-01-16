@@ -46,7 +46,7 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 # Trigger words for ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 
-# Optional repeater for path injection (set via --via-repeater flag)
+# Optional repeater for route tracking (set via --via-repeater flag)
 PREFERRED_REPEATER_KEY = None  # Public key prefix of nearby repeater
 ```
 
@@ -126,21 +126,20 @@ python3 main.py -s /dev/ttyUSB0 -c 1
 # Enable verbose logging
 python3 main.py -s /dev/ttyUSB0 -v
 
-# Route via nearby repeater (path injection + tracking)
+# Track routes via nearby repeater
 python3 main.py -s /dev/ttyUSB0 -r bd
 # Or: python3 main.py -s /dev/ttyUSB0 --via-repeater bd
 ```
 
 ## Repeater Mode
 
-When running near a repeater, use `-r KEY` (or `--via-repeater KEY`) to enable:
+When running near a repeater, use `-r KEY` (or `--via-repeater KEY`) to enable route tracking:
 
-1. **Path Injection**: All responses are routed through the specified repeater for better reliability
-2. **Route Tracking**: Responses show `via:` instead of `route:` when messages came through your repeater
+**Route Tracking**: Responses show `via:` instead of `route:` when messages came through your repeater
 
 Example: `-r bd` or `--via-repeater bd` (where `bd` is your repeater's public key prefix)
 
-This improves delivery success rate and helps track network topology.
+This helps track network topology and understand how messages are being routed.
 
 ## Requirements
 

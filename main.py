@@ -507,19 +507,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             logger.info(f"Sending pong: {reply}")
 
             # Send response (channel or direct)
-            # Use path injection if repeater is configured
             if is_channel:
-                if PREFERRED_REPEATER_KEY:
-                    # Get repeater contact for path injection
-                    repeater = meshcore.get_contact_by_key_prefix(PREFERRED_REPEATER_KEY)
-                    if repeater:
-                        logger.debug(f"Routing response via repeater {PREFERRED_REPEATER_KEY}")
-                        result = await meshcore.commands.send_chan_msg(chan, reply, via=repeater)
-                    else:
-                        logger.debug("Repeater not found, sending without path injection")
-                        result = await meshcore.commands.send_chan_msg(chan, reply)
-                else:
-                    result = await meshcore.commands.send_chan_msg(chan, reply)
+                result = await meshcore.commands.send_chan_msg(chan, reply)
             else:
                 # For direct messages, reply to the sender
                 pubkey_prefix = msg.get("pubkey_prefix")
@@ -699,7 +688,7 @@ Examples:
     parser.add_argument(
         "-r", "--via-repeater",
         metavar="KEY",
-        help="Route responses via repeater (public key prefix). Enables path injection and route tracking."
+        help="Track messages via repeater (public key prefix). Shows 'via:' when messages route through this repeater."
     )
 
     args = parser.parse_args()
