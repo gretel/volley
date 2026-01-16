@@ -588,7 +588,6 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             if result.type == EventType.ERROR:
                 logger.error(f"Failed to send pong: {result.payload}")
             else:
-                logger.info("Pong sent successfully")
                 stats["pongs_sent"] += 1
 
                 # Log stats periodically
