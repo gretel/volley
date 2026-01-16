@@ -81,6 +81,7 @@ Send a 5-digit German zipcode (e.g., `22765`, `10115`) to calculate approximate 
 
 Example:
 - Send `22765` → Bot responds with distance to Hamburg, Germany
+- Send `ping 22765` → Same as above
 - Works for both channel and direct messages
 - Uses offline database with pgeocode for fast, reliable lookups
 
@@ -91,6 +92,7 @@ Send a German phone area code (e.g., `0241`, `030`) to calculate distance to tha
 Example:
 - Send `0241` → Bot responds with distance to Aachen
 - Send `040` → Bot responds with distance to Hamburg
+- Send `ping 040` → Same as above
 - Works for both channel and direct messages
 - Automatically resolves prefix to zipcode and calculates distance
 
@@ -150,11 +152,13 @@ python3 main.py -s /dev/ttyUSB0 -r bd
 
 When running near a repeater, use `-r KEY` (or `--via-repeater KEY`) to enable route tracking:
 
-**Route Tracking**: Responses show `via:` instead of `route:` when messages came through your repeater
+**Route Tracking**:
+- `via:` - Message came through your configured repeater
+- `route:` - Message took a different path (not through your repeater)
 
 Example: `-r bd` or `--via-repeater bd` (where `bd` is your repeater's public key prefix)
 
-This helps track network topology and understand how messages are being routed.
+This helps track network topology and understand how messages are being routed through your local repeater vs alternative paths.
 
 ## Requirements
 

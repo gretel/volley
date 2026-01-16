@@ -434,6 +434,23 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Check if message is a phone prefix (0XXXX or 0XXX)
             is_prefix = re.match(PREFIX_PATTERN, check_text.strip())
 
+            # Check for "ping <zipcode>" or "ping <prefix>" pattern
+            if not is_zipcode and not is_prefix:
+                # Check if it's "ping XXXXX" or "ping 0XXX" format
+                for trigger in TRIGGER_WORDS:
+                    if text_lower.startswith(trigger):
+                        # Extract the part after the trigger word
+                        remaining = check_text[len(trigger):].strip()
+                        if remaining:
+                            # Check if remaining text is a zipcode or prefix
+                            is_zipcode = re.match(ZIPCODE_PATTERN, remaining)
+                            if not is_zipcode:
+                                is_prefix = re.match(PREFIX_PATTERN, remaining)
+                            if is_zipcode or is_prefix:
+                                # Update check_text to just the zipcode/prefix
+                                check_text = remaining
+                        break
+
             # Check if message starts with any trigger word
             if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS) and not is_zipcode and not is_prefix:
                 logger.debug("Not a trigger message, zipcode, or phone prefix, ignoring")
