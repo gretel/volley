@@ -7,6 +7,7 @@ Ping responder for MeshCore networks!
 ## Features
 
 - Responds to "ping" messages on channel and direct messages
+- Zipcode distance calculation (5-digit German/Austrian zipcodes)
 - Compact, low-airtime response format
 - GPS distance calculation for direct messages
 - Statistics tracking (pings received, pongs sent, max distance)
@@ -52,6 +53,15 @@ PREFERRED_REPEATER_KEY = None  # Public key prefix of nearby repeater
 Responds to messages starting with: `ping`, `test`, `pink`, `echo` (case insensitive)
 
 Note: Trigger words must appear at the beginning of the message to avoid responding to bot replies or messages that merely mention these words.
+
+## Zipcode Distance Calculation
+
+Send a 5-digit German or Austrian zipcode (e.g., `22765`, `1010`) to calculate approximate distance from the bot's location to that zipcode. The bot uses an offline database (pyGeoDb) for fast, reliable lookups without API rate limits.
+
+Example:
+- Send `22765` → Bot responds with distance from its location to Hamburg, Germany
+- Works for both channel and direct messages
+- Distance is calculated using the same GPS coordinates as the bot's companion device
 
 ## Rate Limiting
 
@@ -108,6 +118,7 @@ This improves delivery success rate and helps track network topology.
 
 - Python 3.14+
 - meshcore>=2.2.5
+- pyGeoDb>=1.0.0 (for zipcode distance calculation)
 
 ## License
 

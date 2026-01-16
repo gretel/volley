@@ -10,6 +10,7 @@ import argparse
 import logging
 import math
 import random
+import re
 import signal
 import sys
 from datetime import datetime, timezone
@@ -56,6 +57,9 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 
 # Trigger words that activate ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
+
+# Zipcode pattern for distance calculation (5 digits for DE/AT zipcodes)
+ZIPCODE_PATTERN = r"^\d{5}$"
 
 # Optional repeater configuration (set via command line or leave None)
 # When configured, responses will be routed via this repeater for better reliability
@@ -117,6 +121,52 @@ def parse_rx_log_data(payload: Any) -> dict[str, Any]:
         logger.debug(f"Error parsing RX_LOG data: {ex}")
 
     return result
+
+
+def zipcode_to_coords(zipcode: str) -> tuple[float, float] | None:
+    """Convert German/Austrian zipcode to approximate coordinates using pyGeoDb.
+
+    Returns (latitude, longitude) or None if lookup fails.
+    Uses offline database lookup for fast, reliable results.
+    """
+    try:
+        from pygeodb import GeoDb
+
+        # Initialize database (first run downloads data automatically)
+        geo = GeoDb()
+
+        # Query for German/Austrian zipcodes
+        result = geo.query(zipcode, country='DE')
+
+        if result and len(result) > 0:
+            # Get first result
+            location = result[0]
+            lat = location.get('latitude')
+            lon = location.get('longitude')
+
+            if lat is not None and lon is not None:
+                logger.debug(f"Zipcode {zipcode} -> coords: {lat:.4f}, {lon:.4f}")
+                return (float(lat), float(lon))
+
+        # Try Austria if German lookup failed
+        result = geo.query(zipcode, country='AT')
+        if result and len(result) > 0:
+            location = result[0]
+            lat = location.get('latitude')
+            lon = location.get('longitude')
+
+            if lat is not None and lon is not None:
+                logger.debug(f"Zipcode {zipcode} (AT) -> coords: {lat:.4f}, {lon:.4f}")
+                return (float(lat), float(lon))
+
+        logger.debug(f"No coordinates found for zipcode {zipcode}")
+        return None
+    except ImportError:
+        logger.warning("pyGeoDb not available, zipcode lookup disabled")
+        return None
+    except Exception as e:
+        logger.debug(f"Error looking up zipcode {zipcode}: {e}")
+        return None
 
 
 def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float | None:
@@ -300,9 +350,13 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 check_text = text.split(":", 1)[1].strip()
 
             text_lower = check_text.lower()
+
+            # Check if message is a zipcode (5 digits)
+            is_zipcode = re.match(ZIPCODE_PATTERN, check_text.strip())
+
             # Check if message starts with any trigger word
-            if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS):
-                logger.debug("Not a trigger message, ignoring")
+            if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS) and not is_zipcode:
+                logger.debug("Not a trigger message or zipcode, ignoring")
                 return
 
             # Rate limiting check
@@ -327,10 +381,14 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Add current request to tracker
             rate_limit_tracker[requester_key].append(now)
 
-            if is_channel:
-                logger.info(f"Ping detected from {sender} on channel {chan}")
+            if is_zipcode:
+                zipcode = check_text.strip()
+                logger.info(f"Zipcode ping {zipcode} from {sender}" + (f" on channel {chan}" if is_channel else " (direct message)"))
             else:
-                logger.info(f"Ping detected from {sender} (direct message)")
+                if is_channel:
+                    logger.info(f"Ping detected from {sender} on channel {chan}")
+                else:
+                    logger.info(f"Ping detected from {sender} (direct message)")
 
             # Track ping received
             stats["pings_received"] += 1
@@ -359,7 +417,21 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
             # Calculate distance if we have location data
             distance_km = None
-            if not is_channel:
+
+            # Try zipcode-based distance first
+            if is_zipcode:
+                zipcode = check_text.strip()
+                coords = zipcode_to_coords(zipcode)
+                if coords:
+                    zip_lat, zip_lon = coords
+                    distance_km = calculate_distance(device_lat, device_lon, zip_lat, zip_lon)
+                    if distance_km is not None:
+                        logger.info(f"Zipcode {zipcode} distance: {distance_km:.1f}km")
+                        # Track max distance
+                        if distance_km > stats["max_distance_km"]:
+                            stats["max_distance_km"] = distance_km
+                            stats["max_distance_contact"] = f"{sender} (zip:{zipcode})"
+            elif not is_channel:
                 # For direct messages, try to get sender's location from contacts
                 pubkey_prefix = msg.get("pubkey_prefix")
                 if pubkey_prefix:
