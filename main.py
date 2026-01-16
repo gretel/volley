@@ -697,7 +697,7 @@ Examples:
     )
 
     parser.add_argument(
-        "--via-repeater",
+        "-r", "--via-repeater",
         metavar="KEY",
         help="Route responses via repeater (public key prefix). Enables path injection and route tracking."
     )
