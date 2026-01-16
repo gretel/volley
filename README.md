@@ -31,7 +31,7 @@ Ping responder for MeshCore networks!
 
 **Info request (info/help/?):**
 ```
-https://github.com/gretel/volley 73 DO2THX
+Volley ping bot. Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX
 ```
 
 Fields are omitted if unavailable.

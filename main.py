@@ -389,9 +389,9 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             is_info = any(text_lower.startswith(info_word) for info_word in INFO_WORDS)
 
             if is_info:
-                # Send info response
-                info_reply = "https://github.com/gretel/volley 73 DO2THX"
-                logger.info(f"Info request from {sender}, responding with: {info_reply}")
+                # Send info response with usage instructions
+                info_reply = "Volley ping bot. Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX"
+                logger.info(f"Info request from {sender}")
 
                 if is_channel:
                     await meshcore.commands.send_chan_msg(chan, info_reply)
@@ -717,9 +717,13 @@ Examples:
 
     args = parser.parse_args()
 
+    # Set meshcore logger to WARNING by default to reduce noise
+    logging.getLogger("meshcore").setLevel(logging.WARNING)
+
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
+        logging.getLogger("meshcore").setLevel(logging.DEBUG)
 
     # Configure repeater if specified
     global PREFERRED_REPEATER_KEY
