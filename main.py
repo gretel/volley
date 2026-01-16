@@ -821,16 +821,6 @@ Examples:
     except KeyboardInterrupt:
         logger.info("Shutting down...")
     finally:
-        # Print final stats
-        logger.info("=" * 50)
-        logger.info("Final Statistics:")
-        logger.info(f"  Pings received: {stats['pings_received']}")
-        logger.info(f"  Pongs sent: {stats['pongs_sent']}")
-        if stats['max_distance_km'] > 0:
-            logger.info(f"  Max distance: {stats['max_distance_km']:.1f}km "
-                       f"({stats['max_distance_contact'] or 'N/A'})")
-        logger.info("=" * 50)
-
         # Cleanup
         await meshcore.stop_auto_message_fetching()
         await meshcore.disconnect()
