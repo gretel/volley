@@ -30,7 +30,13 @@ Ping responder for MeshCore networks!
 ```
 
 **Info request (info/help/?):**
-Responds via direct message to avoid channel spam:
+
+On channel:
+```
+Volley! DM me: ping/zipcode/prefix https://github.com/gretel/volley
+```
+
+On direct message:
 ```
 Volley! Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX
 ```
