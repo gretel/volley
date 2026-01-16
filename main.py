@@ -312,17 +312,17 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
         """Handle connection events."""
         info = event.payload or {}
         if info.get('reconnected'):
-            logger.info("🔄 Reconnected to device")
+            logger.info("Reconnected to device")
         else:
-            logger.info("✅ Connected to device")
+            logger.info("Connected to device")
 
     async def handle_disconnected(event):
         """Handle disconnection events."""
         info = event.payload or {}
         reason = info.get('reason', 'unknown')
-        logger.warning(f"❌ Disconnected: {reason}")
+        logger.warning(f"Disconnected: {reason}")
         if info.get('max_attempts_exceeded'):
-            logger.error("⚠️  Max reconnection attempts exceeded")
+            logger.error("Max reconnection attempts exceeded")
 
     async def handle_rx_log_data(event):
         """Track SNR, RSSI and path info from RX_LOG_DATA events."""
@@ -760,7 +760,7 @@ Examples:
         logger.warning(f"Database not found: {DB_PATH}")
         logger.warning("Zipcode/prefix lookups will be disabled")
     else:
-        logger.info(f"✅ Database ready: {DB_PATH}")
+        logger.info(f"Database ready: {DB_PATH}")
 
     # Connect to MeshCore device with auto-reconnect
     meshcore = None
