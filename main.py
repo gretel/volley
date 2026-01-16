@@ -394,13 +394,35 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 logger.info(f"Info request from {sender}")
 
                 if is_channel:
-                    await meshcore.commands.send_chan_msg(chan, info_reply)
+                    result = await meshcore.commands.send_chan_msg(chan, info_reply)
                 else:
                     pubkey_prefix = msg.get("pubkey_prefix")
                     if pubkey_prefix:
                         contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
                         if contact:
-                            await meshcore.commands.send_msg(contact, info_reply)
+                            result = await meshcore.commands.send_msg(contact, info_reply)
+                        else:
+                            # Contact not found, fetch contacts and try again
+                            logger.debug(f"Contact not found for {pubkey_prefix}, refreshing contacts")
+                            contacts_result = await meshcore.commands.get_contacts()
+                            if contacts_result.type != EventType.ERROR:
+                                contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
+                                if contact:
+                                    result = await meshcore.commands.send_msg(contact, info_reply)
+                                else:
+                                    logger.error(f"Could not find contact for {pubkey_prefix} even after refresh")
+                                    return
+                            else:
+                                logger.error(f"Failed to get contacts: {contacts_result.payload}")
+                                return
+                    else:
+                        logger.error("No pubkey_prefix in direct message")
+                        return
+
+                if result.type == EventType.ERROR:
+                    logger.error(f"Failed to send info: {result.payload}")
+                else:
+                    logger.info("Info sent successfully")
                 return
 
             # Check if message is a zipcode (5 digits)
