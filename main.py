@@ -442,11 +442,14 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             path_nodes = None
             via_repeater = False
 
+            logger.debug(f"Message path_len: {path_len}, latest_path_info: {latest_path_info}")
+
             if path_len is None and latest_path_info:
                 path_len = latest_path_info.get("path_len")
 
-            if latest_path_info.get("path_nodes"):
+            if latest_path_info and latest_path_info.get("path_nodes"):
                 path_nodes = latest_path_info["path_nodes"]
+                logger.debug(f"Path nodes: {path_nodes}")
                 # Check if message came via configured repeater
                 if PREFERRED_REPEATER_KEY and PREFERRED_REPEATER_KEY in path_nodes:
                     via_repeater = True
