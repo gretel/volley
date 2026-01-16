@@ -33,7 +33,7 @@ Ping responder for MeshCore networks!
 
 On channel:
 ```
-Volley! DM me: ріng/zipcode/prefix https://github.com/gretel/volley
+Volley! Send: ріng/zipcode/prefix https://github.com/gretel/volley
 ```
 (Note: Uses Cyrillic 'і' in ріng to avoid triggering other bots)
 
