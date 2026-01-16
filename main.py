@@ -281,9 +281,16 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 sender = msg.get("pubkey_prefix", "unknown")
                 logger.debug(f"Direct message from {sender}: {text}")
 
-            # Check if this is a ping message
-            text_lower = text.lower()
-            if not any(trigger in text_lower for trigger in TRIGGER_WORDS):
+            # Check if this is a ping message (trigger words must be at start)
+            # For channel messages, check after the "sender: " prefix
+            check_text = text
+            if is_channel and ":" in text:
+                # Skip the "sender: " prefix for channel messages
+                check_text = text.split(":", 1)[1].strip()
+
+            text_lower = check_text.lower()
+            # Check if message starts with any trigger word
+            if not any(text_lower.startswith(trigger) for trigger in TRIGGER_WORDS):
                 logger.debug("Not a trigger message, ignoring")
                 return
 

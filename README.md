@@ -46,7 +46,9 @@ TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 
 ## Trigger Words
 
-Responds to messages containing: `ping`, `test`, `pink`, `echo` (case insensitive)
+Responds to messages starting with: `ping`, `test`, `pink`, `echo` (case insensitive)
+
+Note: Trigger words must appear at the beginning of the message to avoid responding to bot replies or messages that merely mention these words.
 
 ## Rate Limiting
 
