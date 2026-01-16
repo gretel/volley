@@ -389,13 +389,31 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             is_info = any(text_lower.startswith(info_word) for info_word in INFO_WORDS)
 
             if is_info:
-                # Send info response with usage instructions
+                # Send info response with usage instructions via direct message
                 info_reply = "Volley! Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX"
                 logger.info(f"Info request from {sender}")
 
+                # Always send info as direct message to avoid channel spam
                 if is_channel:
-                    result = await meshcore.commands.send_chan_msg(chan, info_reply)
+                    # For channel requests, look up sender by name to get their contact
+                    contact = meshcore.get_contact_by_name(sender)
+                    if not contact:
+                        # Name not found, refresh contacts and try again
+                        logger.debug(f"Contact not found for name {sender}, refreshing contacts")
+                        contacts_result = await meshcore.commands.get_contacts()
+                        if contacts_result.type != EventType.ERROR:
+                            contact = meshcore.get_contact_by_name(sender)
+                        else:
+                            logger.error(f"Failed to get contacts: {contacts_result.payload}")
+                            return
+
+                    if contact:
+                        result = await meshcore.commands.send_msg(contact, info_reply)
+                    else:
+                        logger.error(f"Could not find contact for {sender}")
+                        return
                 else:
+                    # Direct message - use pubkey_prefix
                     pubkey_prefix = msg.get("pubkey_prefix")
                     if pubkey_prefix:
                         contact = meshcore.get_contact_by_key_prefix(pubkey_prefix)
@@ -422,7 +440,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
                 if result.type == EventType.ERROR:
                     logger.error(f"Failed to send info: {result.payload}")
                 else:
-                    logger.info("Info sent successfully")
+                    logger.info("Info sent successfully via DM")
                 return
 
             # Check if message is a zipcode (5 digits)
