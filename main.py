@@ -393,7 +393,8 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
                 if is_channel:
                     # For channel requests, send brief response directing to DM
-                    brief_reply = "Volley! DM me: ping/zipcode/prefix https://github.com/gretel/volley"
+                    # Use unicode to avoid triggering other bots: ріng (Cyrillic і)
+                    brief_reply = "Volley! DM me: ріng/zipcode/prefix https://github.com/gretel/volley"
                     result = await meshcore.commands.send_chan_msg(chan, brief_reply)
                 else:
                     # Direct message - send full info
