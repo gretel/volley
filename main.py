@@ -63,8 +63,8 @@ TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 # Zipcode pattern for distance calculation (5 digits for German zipcodes)
 ZIPCODE_PATTERN = r"^\d{5}$"
 
-# Phone prefix pattern (4-5 digits starting with 0)
-PREFIX_PATTERN = r"^0\d{3,4}$"
+# Phone prefix pattern (3-5 digits starting with 0)
+PREFIX_PATTERN = r"^0\d{2,4}$"
 
 # Database path for zipcode/prefix lookups
 DB_PATH = Path(__file__).parent / "zipcodes.db"
