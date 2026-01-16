@@ -21,12 +21,12 @@ Ping responder for MeshCore networks!
 
 **Channel messages:**
 ```
-@[sender] [emoji] HH:MM:SSZ, snr:XdB, rssi:XdBm, hops:N, route:a1.b2.c3, Xkm
+@[sender] [emoji] HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, hops:N, route:a1.b2.c3, Xkm
 ```
 
 **Direct messages:**
 ```
-[emoji] HH:MM:SSZ, snr:XdB, rssi:XdBm, direct, Xkm
+[emoji] HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, direct, Xkm
 ```
 
 Fields are omitted if unavailable.

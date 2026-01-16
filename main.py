@@ -235,8 +235,8 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        via_repeater: bool = False) -> str:
     """Build compact pong response message.
 
-    Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, rssi:XdBm, hops:N, route:a1.b2.c3
-    Format (direct): 🏐 HH:MM:SSZ, snr:XdB, rssi:XdBm, direct
+    Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, hops:N, route:a1.b2.c3
+    Format (direct): 🏐 HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, direct
     Omits fields that are unavailable.
     Special case: 255 hops means "direct" (no routing).
     """
@@ -253,11 +253,11 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
 
     # Add SNR if available
     if snr is not None:
-        parts.append(f"snr:{snr:.0f}dB")
+        parts.append(f"snr:{snr:.1f}dB")
 
     # Add RSSI if available
     if rssi is not None:
-        parts.append(f"rssi:{rssi:.0f}dBm")
+        parts.append(f"rssi:{rssi:.1f}dBm")
 
     # Add hop count if available
     # 255 hops is a special value meaning "direct" (no routing)
