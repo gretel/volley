@@ -57,6 +57,10 @@ RESPONSE_EMOJIS = ['🏉', '🏀', '🎾', '🏈', '⚽️', '🎱', '🥎', '�
 # Trigger words that activate ping responses (case insensitive)
 TRIGGER_WORDS = ["ping", "test", "pink", "echo"]
 
+# Optional repeater configuration (set via command line or leave None)
+# When configured, responses will be routed via this repeater for better reliability
+PREFERRED_REPEATER_KEY: str | None = None  # Set to repeater's public key prefix
+
 
 def parse_rx_log_data(payload: Any) -> dict[str, Any]:
     """Parse RX_LOG event payload to extract LoRa packet details.
@@ -146,7 +150,8 @@ def calculate_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> fl
 
 def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        path_nodes: list[str] | None, is_direct: bool = False,
-                       distance_km: float | None = None, rssi: float | None = None) -> str:
+                       distance_km: float | None = None, rssi: float | None = None,
+                       via_repeater: bool = False) -> str:
     """Build compact pong response message.
 
     Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:XdB, rssi:XdBm, hops:N, route:a1.b2.c3
@@ -186,7 +191,13 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
     if path_nodes and path_len != 255:
         path_str = ".".join(path_nodes)
         if path_str:
-            parts.append(f"route:{path_str}")
+            # Check if message came via configured repeater
+            route_label = "route"
+            if via_repeater and PREFERRED_REPEATER_KEY:
+                # Check if repeater is in the path
+                if PREFERRED_REPEATER_KEY in path_nodes:
+                    route_label = "via"
+            parts.append(f"{route_label}:{path_str}")
 
     # Add distance if available
     if distance_km is not None:
@@ -334,12 +345,17 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Get path info from latest RX_LOG_DATA or message payload
             path_len = msg.get("path_len")
             path_nodes = None
+            via_repeater = False
 
             if path_len is None and latest_path_info:
                 path_len = latest_path_info.get("path_len")
 
             if latest_path_info.get("path_nodes"):
                 path_nodes = latest_path_info["path_nodes"]
+                # Check if message came via configured repeater
+                if PREFERRED_REPEATER_KEY and PREFERRED_REPEATER_KEY in path_nodes:
+                    via_repeater = True
+                    logger.debug(f"Message came via repeater {PREFERRED_REPEATER_KEY}")
 
             # Calculate distance if we have location data
             distance_km = None
@@ -361,13 +377,24 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
             # Build compact response
             reply = build_pong_message(sender, snr, path_len, path_nodes,
                                        is_direct=not is_channel, distance_km=distance_km,
-                                       rssi=rssi)
+                                       rssi=rssi, via_repeater=via_repeater)
 
             logger.info(f"Sending pong: {reply}")
 
             # Send response (channel or direct)
+            # Use path injection if repeater is configured
             if is_channel:
-                result = await meshcore.commands.send_chan_msg(chan, reply)
+                if PREFERRED_REPEATER_KEY:
+                    # Get repeater contact for path injection
+                    repeater = meshcore.get_contact_by_key_prefix(PREFERRED_REPEATER_KEY)
+                    if repeater:
+                        logger.debug(f"Routing response via repeater {PREFERRED_REPEATER_KEY}")
+                        result = await meshcore.commands.send_chan_msg(chan, reply, via=repeater)
+                    else:
+                        logger.debug("Repeater not found, sending without path injection")
+                        result = await meshcore.commands.send_chan_msg(chan, reply)
+                else:
+                    result = await meshcore.commands.send_chan_msg(chan, reply)
             else:
                 # For direct messages, reply to the sender
                 pubkey_prefix = msg.get("pubkey_prefix")
@@ -544,11 +571,23 @@ Examples:
         help="Enable verbose debug logging"
     )
 
+    parser.add_argument(
+        "--via-repeater",
+        metavar="KEY",
+        help="Route responses via repeater (public key prefix). Enables path injection and route tracking."
+    )
+
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
+
+    # Configure repeater if specified
+    global PREFERRED_REPEATER_KEY
+    if args.via_repeater:
+        PREFERRED_REPEATER_KEY = args.via_repeater
+        logger.info(f"Repeater mode enabled: routing via {PREFERRED_REPEATER_KEY}")
 
     # Connect to MeshCore device with auto-reconnect
     meshcore = None
