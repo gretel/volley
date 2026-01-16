@@ -390,7 +390,7 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
 
             if is_info:
                 # Send info response with usage instructions
-                info_reply = "Volley ping bot. Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX"
+                info_reply = "Volley! Send: ping, zipcode (22767), or prefix (040). https://github.com/gretel/volley 73 DO2THX"
                 logger.info(f"Info request from {sender}")
 
                 if is_channel:
