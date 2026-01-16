@@ -235,8 +235,8 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
                        via_repeater: bool = False) -> str:
     """Build compact pong response message.
 
-    Format (channel): @[sender] 🏐 HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, hops:N, route:a1.b2.c3
-    Format (direct): 🏐 HH:MM:SSZ, snr:X.XdB, rssi:X.XdBm, direct
+    Format (channel): @[sender] 🏐 HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,hops:N,route:a1.b2.c3
+    Format (direct): 🏐 HH:MM:SSZ,snr:X.XdB,rssi:X.XdBm,direct
     Omits fields that are unavailable.
     Special case: 255 hops means "direct" (no routing).
     """
@@ -294,7 +294,7 @@ def build_pong_message(sender: str, snr: float | None, path_len: int | None,
             parts.append(f"{int(distance_km)}km")
 
     # Build final message with @mention in square brackets (MeshCore format)
-    message = ", ".join(parts)
+    message = ",".join(parts)
     if not is_direct:
         message = f"@[{sender}] {message}"
 
