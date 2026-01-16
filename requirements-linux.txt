@@ -1,0 +1,7 @@
+# Linux/OpenBSD requirements (no pyobjc needed)
+# This file was manually created for non-macOS platforms
+meshcore>=2.2.5
+pyserial>=3.5
+pyserial-asyncio-fast>=0.16
+pycayennelpp>=2.4.0
+# bleak is optional on Linux (only if using Bluetooth)

@@ -103,6 +103,10 @@ python3 -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
 # Install dependencies
+# For Linux/OpenBSD/FreeBSD:
+pip install -r requirements-linux.txt
+
+# For macOS:
 pip install -r requirements.txt
 ```
 
@@ -144,6 +148,10 @@ This improves delivery success rate and helps track network topology.
 - zipcodes.db (included - 1MB SQLite database with coordinates)
 
 **No heavy dependencies!** Unlike other geocoding solutions, volley uses a pre-built database with coordinates, eliminating the need for numpy/pandas (72MB+ of dependencies).
+
+**Platform notes:**
+- macOS: Includes pyobjc for Bluetooth support
+- Linux/BSD: No pyobjc needed (use `requirements-linux.txt`)
 
 ## Data Sources
 
