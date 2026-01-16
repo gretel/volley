@@ -461,10 +461,37 @@ async def run_bot(args, device_lat: float, device_lon: float, meshcore: MeshCore
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, signal_handler)
 
+    # Periodic connection check task
+    async def connection_watchdog():
+        """Periodically check connection status and log state changes."""
+        last_connected = meshcore.is_connected
+        while not shutdown_event.is_set():
+            try:
+                await asyncio.sleep(5)  # Check every 5 seconds
+                current_connected = meshcore.is_connected
+                if last_connected != current_connected:
+                    if current_connected:
+                        logger.info("🔗 Connection restored")
+                    else:
+                        logger.warning("🔌 Connection lost, waiting for reconnect...")
+                    last_connected = current_connected
+            except Exception as e:
+                logger.error(f"Error in connection watchdog: {e}")
+
     try:
+        # Run connection watchdog in background
+        watchdog_task = asyncio.create_task(connection_watchdog())
+
         # Run until shutdown signal
         logger.info("Bot is running. Press Ctrl+C to stop.")
         await shutdown_event.wait()
+
+        # Cancel watchdog
+        watchdog_task.cancel()
+        try:
+            await watchdog_task
+        except asyncio.CancelledError:
+            pass
     finally:
         # Cleanup subscriptions
         meshcore.unsubscribe(sub_connected)
